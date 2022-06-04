@@ -294,7 +294,7 @@ void publish_data(void)
     mqttClient.publish(DEFAULT_TOPIC "temperature", buff);
     sprintf(buff, "%0.2f", iaqSensor.humidity);
     mqttClient.publish(DEFAULT_TOPIC "humidity", buff);
-    sprintf(buff, "%0.2f", iaqSensor.pressure);
+    sprintf(buff, "%0.2f", iaqSensor.pressure / 100.0F);
     mqttClient.publish(DEFAULT_TOPIC "pressure", buff);
     sprintf(buff, "%0.2f", iaqSensor.iaq);
     mqttClient.publish(DEFAULT_TOPIC "iaq", buff);
