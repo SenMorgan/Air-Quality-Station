@@ -21,4 +21,9 @@
 #define MQTT_LOGIN       "***"
 #define MQTT_PASSWORD    "***"
 
+// OTA settings
+#define OTA_HOSTNAME HOSTNAME
+// You can leave it empty if you don't want to secure OTA
+#define OTA_PASSWORD "***"
+
 #endif // _CREDENTIALS_H_
