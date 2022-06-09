@@ -23,6 +23,20 @@ const char pass[] = WIFI_PASSWD;
     generic_33v_3s_28d
     generic_33v_300s_4d
     generic_33v_300s_28d
+
+    https://community.bosch-sensortec.com/t5/MEMS-sensors-forum/Units-and-Ranges-for-IAQ-IAQ-accuracy-Static-IAQ-CO2-equivalent/td-p/11582
+
+    Can I use the IAQ output, or base my algorithm on it to fulfill my use-case ?
+        Use IAQ output. (For most mobile applications such as
+        a PERSONAL air quality monitor, this is the best option)
+    Can I use the static IAQ (sIAQ) output, or base my algorithm on it to fulfill
+        my use-case ? Use sIAQ output, or its derivatives, such as CO2 or bVOC estimation.
+        (For most static applications, such as smart home or HVAC, this is the best option)
+    Can I develop an algorithm based on the compensated gas resistance value ?
+        Use compensated raw resistance. Some knowledge of MOX sensing technology is required,
+        especially for baseline tracking, but you can leverage the humidity and
+        temperature compensation from BSEC. This output is a gas resistance value
+        in ohms after removing the effect of humidity and temperature.
 */
 const uint8_t bsec_config_iaq[] = {
 #include "config/generic_33v_3s_4d/bsec_iaq.txt"
@@ -56,7 +70,9 @@ void setup(void)
     Wire.begin(SDA_PIN, SCL_PIN);
 
     iaqSensor.begin(BME680_I2C_ADDR_SECONDARY, Wire);
-    output = "\nBSEC library version " + String(iaqSensor.version.major) + "." + String(iaqSensor.version.minor) + "." + String(iaqSensor.version.major_bugfix) + "." + String(iaqSensor.version.minor_bugfix);
+    output = "\nBSEC library version " + String(iaqSensor.version.major) + "." +
+             String(iaqSensor.version.minor) + "." + String(iaqSensor.version.major_bugfix) +
+             "." + String(iaqSensor.version.minor_bugfix);
     Serial.println(output);
     checkIaqSensorStatus();
 
@@ -120,8 +136,8 @@ void loop(void)
         output += ", " + String(iaqSensor.pressure);
         output += ", " + String(iaqSensor.rawHumidity);
         output += ", " + String(iaqSensor.gasResistance);
-        output += ", " + String(iaqSensor.iaq);
-        output += ", " + String(iaqSensor.iaqAccuracy);
+        output += ", " + String(iaqSensor.staticIaq);
+        output += ", " + String(iaqSensor.staticIaqAccuracy);
         output += ", " + String(iaqSensor.temperature);
         output += ", " + String(iaqSensor.humidity);
         output += ", " + String(iaqSensor.staticIaq);
@@ -229,7 +245,7 @@ void updateState(void)
     if (stateUpdateCounter == 0)
     {
         /* First state update when IAQ accuracy is >= 3 */
-        if (iaqSensor.iaqAccuracy >= 3)
+        if (iaqSensor.staticIaqAccuracy >= 3)
         {
             update = true;
             stateUpdateCounter++;
@@ -296,9 +312,9 @@ void publish_data(void)
     mqttClient.publish(DEFAULT_TOPIC "humidity", buff);
     sprintf(buff, "%0.2f", iaqSensor.pressure / 100.0F);
     mqttClient.publish(DEFAULT_TOPIC "pressure", buff);
-    sprintf(buff, "%0.2f", iaqSensor.iaq);
+    sprintf(buff, "%0.2f", iaqSensor.staticIaq);
     mqttClient.publish(DEFAULT_TOPIC "iaq", buff);
-    sprintf(buff, "%d", iaqSensor.iaqAccuracy);
+    sprintf(buff, "%d", iaqSensor.staticIaqAccuracy);
     mqttClient.publish(DEFAULT_TOPIC "iaqAccuracy", buff);
     sprintf(buff, "%0.2f", iaqSensor.co2Equivalent);
     mqttClient.publish(DEFAULT_TOPIC "co2Equivalent", buff);
