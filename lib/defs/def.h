@@ -27,7 +27,7 @@
 
 // IO pins
 #define STATUS_LED D4
-#define SDA_PIN    4
-#define SCL_PIN    5
+#define SDA_PIN    12 // D6
+#define SCL_PIN    14 // D5
 
 #endif // _DEF_H_
