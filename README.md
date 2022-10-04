@@ -11,12 +11,10 @@ The project was created in PlatformIO 04.06.2022
 
 <br>
 
-## About BME680
-
+## BME680 Sensor
 The BME680 is a low-power gas, pressure, humidity and temperature sensor. The sensor is based on a metal oxide (MOX) gas sensor and an integrated heater. The heater is used to heat up the MOX gas sensor and to desorb VOCs from the sensor surface.
 
-## About BSEC library
-
+## BSEC library
 >*From BSEC Software Library:*<br><br>
 Bosch Sensortec Environmental Cluster (BSEC) Software v1.4.8.0 released on July 8th, 2020<br><br>
 The BSEC fusion library has been conceptualized to provide a higher-level signal processing and fusion for the BME680. The library receives compensated sensor values from the sensor API. It processes the BME680 signals to provide the requested sensor outputs.<br>
@@ -27,12 +25,10 @@ Key features:<br>
 >- Precise calculation of air quality (IAQ) level outside the device
 
 ## About IAQ value
-
 >*From BSEC Software Library:*<br><br>
 The IAQ scale ranges from **0** (clean air) to **500** (heavily polluted air). During operation, algorithms automatically calibrate and adapt themselves to the typical environments where the sensor is operated (e.g., home, workplace, inside a car, etc.).This automatic background calibration ensures that users experience consistent IAQ performance. The calibration process considers the recent measurement history (typ. up to four days) to ensure that **IAQ=25** corresponds to typical good air and **IAQ=250** indicates typical polluted air.
 
- # About IAQ accuracy
-
+## About IAQ accuracy
  >*From BSEC Software Library:*<br><br>
 The IAQ accuracy is reflects the current state of the background calibration process, such as:<br>
 **IAQ Accuracy=0** could either mean:<br>
@@ -41,7 +37,6 @@ there was a timing violation (i.e. BSEC was called too early or too late), which
 **IAQ Accuracy=1** means the background history of BSEC is uncertain. This typically means the gas sensor data was too stable for BSEC to clearly define its references,<br>
 **IAQ Accuracy=2** means BSEC found a new calibration data and is currently calibrating,<br>
 **IAQ Accuracy=3** means BSEC calibrated successfully.
-
 
 ## Home Assistant YAML configuration
 ```yaml
@@ -87,16 +82,14 @@ sensor:
     unit_of_measurement: "ppm"
 ```
 
-
-<br>
+## Settings
+WiFi, MQTT and OTA settings are in `lib/defs/credentials.h` file.<br>
+Hardware and other settings are in `lib/defs/def.h` file.
 
 ## Dependencies
 All dependencies will be automatically installed by PlatformIO:
 - BSEC Software Library@1.6.1480
 - PubSubClient@2.8.0
 
-<br>
-
 ## Copyright
-
 Copyright (c) 2022 Sen Morgan. Licensed under the MIT license, see LICENSE.md
