@@ -23,11 +23,13 @@
 #define MQTT_UPTIME_TOPIC         DEFAULT_TOPIC "uptime"
 
 // Reconnecting to MQTT server delay
-#define RECONNECT_DELAY     5000
+#define RECONNECT_DELAY 5000
+// Status LED error blinking brightness
+#define STATUS_LED_ERROR_BRIGHTNESS 250
 
 // IO pins
-#define STATUS_LED D4
-#define SDA_PIN    12 // D6
-#define SCL_PIN    14 // D5
+// #define LED_BUILTIN 2    // D4 - already defined in pins_arduino.h
+#define SDA_PIN 12 // D6
+#define SCL_PIN 14 // D5
 
 #endif // _DEF_H_

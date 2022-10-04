@@ -67,7 +67,10 @@ void setup(void)
 {
     EEPROM.begin(BSEC_MAX_STATE_BLOB_SIZE + 1); // 1st address for the length
     Serial.begin(115200);
+
     Wire.begin(SDA_PIN, SCL_PIN);
+
+    pinMode(LED_BUILTIN, OUTPUT);
 
     iaqSensor.begin(BME680_I2C_ADDR_SECONDARY, Wire);
     output = "\nBSEC library version " + String(iaqSensor.version.major) + "." +
@@ -105,12 +108,12 @@ void setup(void)
     ArduinoOTA.setPassword(OTA_PASSWORD);
     ArduinoOTA.begin();
     ArduinoOTA.onProgress([](uint16_t progress, uint16_t total)
-                          { digitalWrite(STATUS_LED, !digitalRead(STATUS_LED)); });
+                          { digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); });
     ArduinoOTA.onEnd([]()
-                     { digitalWrite(STATUS_LED, 1); });
+                     { digitalWrite(LED_BUILTIN, 1); });
 
     // Make sure that status led is off
-    digitalWrite(STATUS_LED, 1);
+    digitalWrite(LED_BUILTIN, HIGH);
 
     // MQTT initializing
     mqttClient.setServer(MQTT_SERVER, MQTT_SERVER_PORT);
@@ -204,10 +207,9 @@ void checkIaqSensorStatus(void)
 
 void errLeds(void)
 {
-    pinMode(LED_BUILTIN, OUTPUT);
-    digitalWrite(LED_BUILTIN, HIGH);
+    analogWrite(LED_BUILTIN, STATUS_LED_ERROR_BRIGHTNESS);
     delay(100);
-    digitalWrite(LED_BUILTIN, LOW);
+    digitalWrite(LED_BUILTIN, HIGH);
     delay(100);
 }
 
