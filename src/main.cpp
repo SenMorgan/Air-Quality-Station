@@ -3,8 +3,6 @@
 #include <PubSubClient.h>
 #include <EEPROM.h>
 #include "bsec.h"
-
-#include "credentials.h"
 #include "def.h"
 
 const char ssid[] = WIFI_SSID;
