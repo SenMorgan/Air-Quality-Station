@@ -15,7 +15,7 @@
 #define MQTT_WILL_TOPIC           DEFAULT_TOPIC "availability"
 #define MQTT_QOS                  1
 #define MQTT_RETAIN               1
-#define MQTT_WILL_MESSAGE         DEFAULT_TOPIC "offline"
+#define MQTT_WILL_MESSAGE         "offline"
 #define MQTT_SUBSCRIBE_TOPIC      DEFAULT_TOPIC "#"
 #define MQTT_PUBLISH_TOPIC        DEFAULT_TOPIC "state"
 #define MQTT_AVAILABILITY_TOPIC   DEFAULT_TOPIC "availability"
