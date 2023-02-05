@@ -83,7 +83,7 @@ sensor:
 ```
 
 ## Settings
-WiFi, MQTT and OTA settings are in `lib/defs/credentials.h` file.<br>
+WiFi, OTA and MQTT settings must be set by renaming `platformio_override.ini.example` to `platformio_override.ini` and setting your own values.
 Hardware and other settings are in `lib/defs/def.h` file.
 
 ## Dependencies
