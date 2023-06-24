@@ -300,25 +300,30 @@ uint8_t reconnect(void)
  */
 void publish_data(void)
 {
+    static uint32_t lastPublishedTimeStamp;
     static char buff[20];
 
-    mqttClient.publish(MQTT_AVAILABILITY_TOPIC, MQTT_AVAILABILITY_MESSAGE);
-    sprintf(buff, "%ld sec", millis() / 1000);
-    mqttClient.publish(MQTT_UPTIME_TOPIC, buff);
-    sprintf(buff, "%0.2f", iaqSensor.temperature);
-    mqttClient.publish(DEFAULT_TOPIC "temperature", buff);
-    sprintf(buff, "%0.2f", iaqSensor.humidity);
-    mqttClient.publish(DEFAULT_TOPIC "humidity", buff);
-    sprintf(buff, "%0.2f", iaqSensor.pressure / 100.0F);
-    mqttClient.publish(DEFAULT_TOPIC "pressure", buff);
-    sprintf(buff, "%0.2f", iaqSensor.staticIaq);
-    mqttClient.publish(DEFAULT_TOPIC "iaq", buff);
-    sprintf(buff, "%d", iaqSensor.staticIaqAccuracy);
-    mqttClient.publish(DEFAULT_TOPIC "iaqAccuracy", buff);
-    sprintf(buff, "%0.2f", iaqSensor.co2Equivalent);
-    mqttClient.publish(DEFAULT_TOPIC "co2Equivalent", buff);
-    sprintf(buff, "%0.2f", iaqSensor.breathVocEquivalent);
-    mqttClient.publish(DEFAULT_TOPIC "breathVocEquivalent", buff);
+    if (millis() - lastPublishedTimeStamp >= MQTT_PUBLISH_INTERVAL)
+    {
+        mqttClient.publish(MQTT_AVAILABILITY_TOPIC, MQTT_AVAILABILITY_MESSAGE);
+        sprintf(buff, "%ld sec", millis() / 1000);
+        mqttClient.publish(MQTT_UPTIME_TOPIC, buff);
+        sprintf(buff, "%0.2f", iaqSensor.temperature);
+        mqttClient.publish(DEFAULT_TOPIC "temperature", buff);
+        sprintf(buff, "%0.2f", iaqSensor.humidity);
+        mqttClient.publish(DEFAULT_TOPIC "humidity", buff);
+        sprintf(buff, "%0.2f", iaqSensor.pressure / 100.0F);
+        mqttClient.publish(DEFAULT_TOPIC "pressure", buff);
+        sprintf(buff, "%0.2f", iaqSensor.staticIaq);
+        mqttClient.publish(DEFAULT_TOPIC "iaq", buff);
+        sprintf(buff, "%d", iaqSensor.staticIaqAccuracy);
+        mqttClient.publish(DEFAULT_TOPIC "iaqAccuracy", buff);
+        sprintf(buff, "%0.2f", iaqSensor.co2Equivalent);
+        mqttClient.publish(DEFAULT_TOPIC "co2Equivalent", buff);
+        sprintf(buff, "%0.2f", iaqSensor.breathVocEquivalent);
+        mqttClient.publish(DEFAULT_TOPIC "breathVocEquivalent", buff);
 
-    Serial.println("Data were sent");
+        lastPublishedTimeStamp = millis();
+        Serial.println("Data were sent");
+    }
 }
