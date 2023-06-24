@@ -22,8 +22,10 @@
 #define MQTT_AVAILABILITY_MESSAGE "online"
 #define MQTT_UPTIME_TOPIC         DEFAULT_TOPIC "uptime"
 
+// MQTT publish interval
+#define MQTT_PUBLISH_INTERVAL       15000 // 15 seconds
 // Reconnecting to MQTT server delay
-#define RECONNECT_DELAY 5000
+#define RECONNECT_DELAY             5000
 // Status LED error blinking brightness
 #define STATUS_LED_ERROR_BRIGHTNESS 250
 
@@ -32,4 +34,4 @@
 #define SDA_PIN 12 // D6
 #define SCL_PIN 14 // D5
 
-#endif // _DEF_H_
+#endif             // _DEF_H_
