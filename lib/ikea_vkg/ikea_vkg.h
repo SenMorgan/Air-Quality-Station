@@ -2,12 +2,10 @@
 
 #include <SoftwareSerial.h>
 #include "types.h"
+#include "def.h"
 
 namespace SerialCom {
-    constexpr static const uint8_t PIN_UART_RX = 13; // D7
-    constexpr static const uint8_t PIN_UART_TX = 16; // D0 - UNUSED
-
-    SoftwareSerial sensorSerial(PIN_UART_RX, PIN_UART_TX);
+    SoftwareSerial sensorSerial(IKEA_VKG_RX_PIN, IKEA_VKG_TX_PIN);
 
     uint8_t serialRxBuf[255];
     uint8_t rxBufIdx = 0;

@@ -33,5 +33,7 @@
 // #define LED_BUILTIN 2    // D4 - already defined in pins_arduino.h
 #define SDA_PIN 12 // D6
 #define SCL_PIN 14 // D5
+#define IKEA_VKG_RX_PIN 13 // D7
+#define IKEA_VKG_TX_PIN 16 // D0 - not used, but must be defined
 
 #endif             // _DEF_H_
