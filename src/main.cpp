@@ -5,9 +5,6 @@
 #include "def.h"
 #include "ikea_vkg.h"
 
-const char ssid[] = WIFI_SSID;
-const char pass[] = WIFI_PASSWD;
-
 /* Configure the BSEC library with information about the sensor
     18v/33v = Voltage at Vdd. 1.8V or 3.3V
     3s/300s = BSEC operating mode, BSEC_SAMPLE_RATE_LP or BSEC_SAMPLE_RATE_ULP
@@ -39,16 +36,13 @@ const uint8_t bsec_config_iaq[] = {
 #include "config/generic_33v_3s_4d/bsec_iaq.txt"
 };
 
+const char ssid[] = WIFI_SSID;
+const char pass[] = WIFI_PASSWD;
+
 particleSensorState_t state;
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
-
-// Helper functions declarations
-void checkIaqSensorStatus(void);
-void errLeds(void);
-uint8_t reconnect(void);
-void publish_data(void);
 
 // Create an object of the class Bsec
 Bsec iaqSensor;
@@ -56,6 +50,15 @@ uint8_t bsecState[BSEC_MAX_STATE_BLOB_SIZE] = {0};
 uint16_t stateUpdateCounter = 0;
 
 String output;
+
+uint8_t dig_input_1_state, dig_input_2_state;
+
+// Helper functions declarations
+void checkIaqSensorStatus(void);
+void errLeds(void);
+void read_publish_inputs(void);
+uint8_t reconnect(void);
+void publish_data(void);
 
 void setup(void)
 {
@@ -65,6 +68,8 @@ void setup(void)
     Wire.begin(SDA_PIN, SCL_PIN);
 
     pinMode(LED_BUILTIN, OUTPUT);
+    pinMode(DIG_INPUT_1_PIN, INPUT_PULLUP);
+    pinMode(DIG_INPUT_2_PIN, INPUT_PULLUP);
 
     iaqSensor.begin(BME68X_I2C_ADDR_HIGH, Wire);
     output = "\nBSEC library version " + String(iaqSensor.version.major) + "." +
@@ -158,6 +163,8 @@ void loop(void)
         checkIaqSensorStatus();
     }
 
+    read_publish_inputs();
+
     yield();
 }
 
@@ -204,6 +211,41 @@ void errLeds(void)
     delay(100);
     digitalWrite(LED_BUILTIN, LOW);
     delay(100);
+}
+
+void read_publish_inputs()
+{
+    static bool prev_dig_input_1_state = HIGH;
+    static bool prev_dig_input_2_state = HIGH;
+    static unsigned long last_debounce_time_1 = 0;
+    static unsigned long last_debounce_time_2 = 0;
+
+    // Read the current states of the digital inputs
+    dig_input_1_state = digitalRead(DIG_INPUT_1_PIN);
+    dig_input_2_state = digitalRead(DIG_INPUT_2_PIN);
+
+    // Debounce the digital inputs
+    if (millis() - last_debounce_time_1 > DIG_IN_DEBOUNCE_DELAY)
+    {
+        if (dig_input_1_state != prev_dig_input_1_state)
+        {
+            mqttClient.publish(DEFAULT_TOPIC "dig_input_1", dig_input_1_state ? "1" : "0");
+            prev_dig_input_1_state = dig_input_1_state;
+            Serial.println("dig_input_1_state changed: " + String(dig_input_1_state));
+        }
+        last_debounce_time_1 = millis();
+    }
+
+    if (millis() - last_debounce_time_2 > DIG_IN_DEBOUNCE_DELAY)
+    {
+        if (dig_input_2_state != prev_dig_input_2_state)
+        {
+            mqttClient.publish(DEFAULT_TOPIC "dig_input_2", dig_input_2_state ? "1" : "0");
+            prev_dig_input_2_state = dig_input_2_state;
+            Serial.println("dig_input_2_state changed: " + String(dig_input_2_state));
+        }
+        last_debounce_time_2 = millis();
+    }
 }
 
 /**
