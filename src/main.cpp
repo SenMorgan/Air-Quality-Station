@@ -3,6 +3,8 @@
 #include <PubSubClient.h>
 #include "bsec.h"
 #include "def.h"
+#include "SerialCom.h"
+#include "Types.h"
 
 const char ssid[] = WIFI_SSID;
 const char pass[] = WIFI_PASSWD;
@@ -38,7 +40,7 @@ const uint8_t bsec_config_iaq[] = {
 #include "config/generic_33v_3s_4d/bsec_iaq.txt"
 };
 
-#define STATE_SAVE_PERIOD UINT32_C(360 * 60 * 1000) // 360 minutes - 4 times a day
+particleSensorState_t state;
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -56,10 +58,10 @@ uint16_t stateUpdateCounter = 0;
 
 String output;
 
-// Entry point for the example
 void setup(void)
 {
     Serial.begin(115200);
+    SerialCom::setup();
 
     Wire.begin(SDA_PIN, SCL_PIN);
 
@@ -121,6 +123,7 @@ void setup(void)
 void loop(void)
 {
     ArduinoOTA.handle();
+    SerialCom::handleUart(state);
 
     uint8_t connectedToServer = mqttClient.loop();
 
@@ -248,6 +251,8 @@ void publish_data(void)
         mqttClient.publish(DEFAULT_TOPIC "co2Equivalent", buff);
         sprintf(buff, "%0.2f", iaqSensor.breathVocEquivalent);
         mqttClient.publish(DEFAULT_TOPIC "breathVocEquivalent", buff);
+        sprintf(buff, "%d", state.avgPM25);
+        mqttClient.publish(DEFAULT_TOPIC "pm25", buff);
 
         lastPublishedTimeStamp = millis();
         Serial.println("Data were sent");
