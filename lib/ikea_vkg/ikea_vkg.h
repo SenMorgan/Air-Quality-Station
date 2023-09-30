@@ -1,8 +1,7 @@
 #pragma once
 
 #include <SoftwareSerial.h>
-
-#include "Types.h"
+#include "types.h"
 
 namespace SerialCom {
     constexpr static const uint8_t PIN_UART_RX = 13; // D7

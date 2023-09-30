@@ -3,8 +3,7 @@
 #include <PubSubClient.h>
 #include "bsec.h"
 #include "def.h"
-#include "SerialCom.h"
-#include "Types.h"
+#include "ikea_vkg.h"
 
 const char ssid[] = WIFI_SSID;
 const char pass[] = WIFI_PASSWD;
