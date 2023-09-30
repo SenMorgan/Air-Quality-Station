@@ -294,6 +294,10 @@ void publish_data(void)
         mqttClient.publish(DEFAULT_TOPIC "breathVocEquivalent", buff);
         sprintf(buff, "%d", state.avgPM25);
         mqttClient.publish(DEFAULT_TOPIC "pm25", buff);
+        // Publish the state of the digital inputs to ensure that the server
+        // knows the current state of the inputs
+        mqttClient.publish(DEFAULT_TOPIC "dig_input_1", dig_input_1_state ? "1" : "0");
+        mqttClient.publish(DEFAULT_TOPIC "dig_input_2", dig_input_2_state ? "1" : "0");
 
         lastPublishedTimeStamp = millis();
         Serial.println("Data were sent");
