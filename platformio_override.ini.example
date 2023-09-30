@@ -5,6 +5,7 @@ upload_flags =
 
 [env]
 build_flags =
+    '-DPIO_FRAMEWORK_ARDUINO_MMU_CACHE16_IRAM48'
   	'-DWIFI_SSID="***"'
     '-DWIFI_PASSWD="***"'
     '-DMQTT_SERVER="***"'
