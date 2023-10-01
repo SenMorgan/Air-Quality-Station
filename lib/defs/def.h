@@ -35,7 +35,7 @@
 #define SCL_PIN         14 // D5
 #define IKEA_VKG_RX_PIN 13 // D7
 #define IKEA_VKG_TX_PIN 16 // D0 - not used, but must be defined
-#define DIG_INPUT_1_PIN 4  // D2
-#define DIG_INPUT_2_PIN 0  // D3
+#define DIG_INPUT_1_PIN 5  // D1
+#define DIG_INPUT_2_PIN 4  // D2
 
 #endif // _DEF_H_
