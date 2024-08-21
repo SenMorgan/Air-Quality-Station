@@ -11,6 +11,13 @@ The project was created in PlatformIO 04.06.2022
 
 <br>
 
+## Build and settings
+1. Install (if you haven't already) [PlatformIO](https://platformio.org/) extension for VS Code.
+2. Create a copy of `platformio_override.ini.example` and rename it to `platformio_override.ini`.
+3. Set your own values in `platformio_override.ini`.
+4. Update hardware and other settings in `lib/defs/def.h` file if needed.
+5. Build and upload the project to your ESP device using PlatformIO.
+
 ## BME680 Sensor
 The BME680 is a low-power gas, pressure, humidity and temperature sensor. The sensor is based on a metal oxide (MOX) gas sensor and an integrated heater. The heater is used to heat up the MOX gas sensor and to desorb VOCs from the sensor surface.
 
@@ -81,10 +88,6 @@ sensor:
     value_template: "{{ value }}"
     unit_of_measurement: "ppm"
 ```
-
-## Settings
-WiFi, OTA and MQTT settings must be set by renaming `platformio_override.ini.example` to `platformio_override.ini` and setting your own values.
-Hardware and other settings are in `lib/defs/def.h` file.
 
 ## Dependencies
 All dependencies will be automatically installed by PlatformIO:
