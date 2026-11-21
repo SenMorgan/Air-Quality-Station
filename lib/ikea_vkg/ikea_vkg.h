@@ -1,111 +1,98 @@
 #pragma once
 
-#include <SoftwareSerial.h>
+#include <Arduino.h>
 #include "types.h"
 #include "def.h"
 
+#if defined(ESP8266)
+#include <SoftwareSerial.h>
+#endif
+
+/**
+ * Non-blocking reader of the IKEA VINDRIKTNING PM1006 sensor frames.
+ *
+ * Frame format (20 bytes):
+ *   0x16 0x11 0x0B DF1 ... DF16 CS
+ *   PM2.5 = DF3 << 8 | DF4 (bytes 5 and 6), sum of all 20 bytes == 0
+ */
 namespace SerialCom {
-    SoftwareSerial sensorSerial(IKEA_VKG_RX_PIN, IKEA_VKG_TX_PIN);
+#if defined(ESP8266)
+    static SoftwareSerial sensorSerial(IKEA_VKG_RX_PIN, IKEA_VKG_TX_PIN);
+#else
+    static HardwareSerial sensorSerial(1);
+#endif
 
-    uint8_t serialRxBuf[255];
-    uint8_t rxBufIdx = 0;
+    static constexpr uint8_t FRAME_LEN = 20;
+    static constexpr uint8_t HEADER[] = {0x16, 0x11, 0x0B};
+    static constexpr uint8_t HEADER_LEN = sizeof(HEADER);
+    static constexpr uint8_t AVG_WINDOW = sizeof(particleSensorState_t::measurements) /
+                                          sizeof(particleSensorState_t::measurements[0]);
 
-    void setup() {
+    static uint8_t serialRxBuf[FRAME_LEN];
+    static uint8_t rxBufIdx = 0;
+
+    inline void setup() {
+#if defined(ESP8266)
         sensorSerial.begin(9600);
+#else
+        sensorSerial.begin(9600, SERIAL_8N1, IKEA_VKG_RX_PIN, IKEA_VKG_TX_PIN);
+#endif
     }
 
-    void clearRxBuf() {
-        // Clear everything for the next message
-        memset(serialRxBuf, 0, sizeof(serialRxBuf));
-        rxBufIdx = 0;
-    }
-
-    void parseState(particleSensorState_t& state) {
-        /**
-         *         MSB  DF 3     DF 4  LSB
-         * uint16_t = xxxxxxxx xxxxxxxx
-         */
-        const uint16_t pm25 = (serialRxBuf[5] << 8) | serialRxBuf[6];
-
-        Serial.printf("Received PM 2.5 reading: %d\n", pm25);
-
-        state.measurements[state.measurementIdx] = pm25;
-
-        state.measurementIdx = (state.measurementIdx + 1) % 5;
-
-        if (state.measurementIdx == 0) {
-            float avgPM25 = 0.0f;
-
-            for (uint8_t i = 0; i < 5; ++i) {
-                avgPM25 += state.measurements[i] / 5.0f;
-            }
-
-            state.avgPM25 = avgPM25;
-            state.valid = true;
-
-            Serial.printf("New Avg PM25: %d\n", state.avgPM25);
-        }
-
-        clearRxBuf();
-    }
-
-    bool isValidHeader() {
-        bool headerValid = serialRxBuf[0] == 0x16 && serialRxBuf[1] == 0x11 && serialRxBuf[2] == 0x0B;
-
-        if (!headerValid) {
-            Serial.println("Received message with invalid header.");
-        }
-
-        return headerValid;
-    }
-
-    bool isValidChecksum() {
+    inline bool isValidChecksum() {
         uint8_t checksum = 0;
-
-        for (uint8_t i = 0; i < 20; i++) {
+        for (uint8_t i = 0; i < FRAME_LEN; i++) {
             checksum += serialRxBuf[i];
         }
-
         if (checksum != 0) {
-            Serial.printf("Received message with invalid checksum. Expected: 0. Actual: %d\n", checksum);
+            Serial.printf("Received message with invalid checksum: %u\n", checksum);
         }
-
         return checksum == 0;
     }
 
-    void handleUart(particleSensorState_t& state) {
-        if (!sensorSerial.available()) {
-            return;
-        }
+    inline void parseState(particleSensorState_t &state) {
+        const uint16_t pm25 = (serialRxBuf[5] << 8) | serialRxBuf[6];
+        Serial.printf("Received PM 2.5 reading: %u\n", pm25);
 
-        Serial.print("Receiving:");
-        while (sensorSerial.available()) {
-            serialRxBuf[rxBufIdx++] = sensorSerial.read();
-            Serial.print(".");
+        state.measurements[state.measurementIdx] = pm25;
+        state.measurementIdx = (state.measurementIdx + 1) % AVG_WINDOW;
 
-            // Without this delay, receiving data breaks for reasons that are beyond me
-            delay(15);
-
-            if (rxBufIdx >= 64) {
-                clearRxBuf();
+        if (state.measurementIdx == 0) {
+            uint32_t sum = 0;
+            for (uint8_t i = 0; i < AVG_WINDOW; ++i) {
+                sum += state.measurements[i];
             }
+            state.avgPM25 = (sum + AVG_WINDOW / 2) / AVG_WINDOW;
+            state.valid = true;
+            Serial.printf("New Avg PM25: %u\n", state.avgPM25);
         }
-        Serial.println("Done.");
+    }
 
-        if (isValidHeader() && isValidChecksum()) {
-            parseState(state);
+    /**
+     * @brief Consume all available bytes without blocking.
+     * Bytes are accumulated across calls until a full frame is received,
+     * the header is used to resynchronize on garbage.
+     */
+    inline void handleUart(particleSensorState_t &state) {
+        while (sensorSerial.available()) {
+            const uint8_t b = sensorSerial.read();
 
-            Serial.printf(
-                "Current measurements: %d, %d, %d, %d, %d\n",
+            if (rxBufIdx < HEADER_LEN && b != HEADER[rxBufIdx]) {
+                // Header mismatch: resync, the byte may be a start of a new frame
+                rxBufIdx = 0;
+                if (b != HEADER[0]) {
+                    continue;
+                }
+            }
 
-                state.measurements[0],
-                state.measurements[1],
-                state.measurements[2],
-                state.measurements[3],
-                state.measurements[4]
-            );
-        } else {
-            clearRxBuf();
+            serialRxBuf[rxBufIdx++] = b;
+
+            if (rxBufIdx == FRAME_LEN) {
+                if (isValidChecksum()) {
+                    parseState(state);
+                }
+                rxBufIdx = 0;
+            }
         }
     }
 } // namespace SerialCom

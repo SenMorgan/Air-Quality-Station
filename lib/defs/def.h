@@ -24,8 +24,10 @@
 #define MQTT_PUBLISH_INTERVAL       15000 // 15 seconds
 // Reconnecting to MQTT server delay
 #define RECONNECT_DELAY             5000
-// Status LED error blinking brightness
-#define STATUS_LED_ERROR_BRIGHTNESS 250
+// Period of saving BSEC calibration state to EEPROM (flash)
+#define BSEC_STATE_SAVE_PERIOD      (6UL * 60 * 60 * 1000) // 6 hours
+// Time to blink the status LED before restarting on a sensor error
+#define ERROR_RESTART_DELAY         10000 // 10 seconds
 // Digital input debounce delay
 #define DIG_IN_DEBOUNCE_DELAY       50
 
