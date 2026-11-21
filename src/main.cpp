@@ -107,11 +107,7 @@ void setup(void)
 
     WiFi.mode(WIFI_STA);
     // Hostname must be set before WiFi.begin(), otherwise it is not applied
-#if defined(ESP8266)
     WiFi.hostname(HOSTNAME);
-#else
-    WiFi.setHostname(HOSTNAME);
-#endif
     WiFi.begin(ssid, pass);
 
     // Arduino OTA initializing

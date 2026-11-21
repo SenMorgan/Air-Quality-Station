@@ -4,9 +4,7 @@
 #include "types.h"
 #include "def.h"
 
-#if defined(ESP8266)
 #include <SoftwareSerial.h>
-#endif
 
 /**
  * Non-blocking reader of the IKEA VINDRIKTNING PM1006 sensor frames.
@@ -16,11 +14,7 @@
  *   PM2.5 = DF3 << 8 | DF4 (bytes 5 and 6), sum of all 20 bytes == 0
  */
 namespace SerialCom {
-#if defined(ESP8266)
     static SoftwareSerial sensorSerial(IKEA_VKG_RX_PIN, IKEA_VKG_TX_PIN);
-#else
-    static HardwareSerial sensorSerial(1);
-#endif
 
     static constexpr uint8_t FRAME_LEN = 20;
     static constexpr uint8_t HEADER[] = {0x16, 0x11, 0x0B};
@@ -32,11 +26,7 @@ namespace SerialCom {
     static uint8_t rxBufIdx = 0;
 
     inline void setup() {
-#if defined(ESP8266)
         sensorSerial.begin(9600);
-#else
-        sensorSerial.begin(9600, SERIAL_8N1, IKEA_VKG_RX_PIN, IKEA_VKG_TX_PIN);
-#endif
     }
 
     inline bool isValidChecksum() {
