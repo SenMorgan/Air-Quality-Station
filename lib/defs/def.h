@@ -10,6 +10,9 @@
 #ifndef _DEF_H_
 #define _DEF_H_
 
+// Firmware version, reported to Home Assistant via MQTT discovery
+#define FIRMWARE_VERSION "1.2.0"
+
 // MQTT definitions
 #define DEFAULT_TOPIC             "/air-quality-station/"
 #define MQTT_WILL_TOPIC           DEFAULT_TOPIC "availability"
@@ -19,6 +22,7 @@
 #define MQTT_AVAILABILITY_TOPIC   DEFAULT_TOPIC "availability"
 #define MQTT_AVAILABILITY_MESSAGE "online"
 #define MQTT_UPTIME_TOPIC         DEFAULT_TOPIC "uptime"
+#define MQTT_RSSI_TOPIC           DEFAULT_TOPIC "rssi"
 
 // MQTT publish interval
 #define MQTT_PUBLISH_INTERVAL       15000 // 15 seconds
@@ -28,6 +32,8 @@
 #define BSEC_STATE_SAVE_PERIOD      (6UL * 60 * 60 * 1000) // 6 hours
 // Time to blink the status LED before restarting on a sensor error
 #define ERROR_RESTART_DELAY         10000 // 10 seconds
+// PM2.5 value is not published if no valid Vindriktning frame came for this time
+#define PM25_STALE_TIMEOUT          (5UL * 60 * 1000) // 5 minutes
 // Digital input debounce delay
 #define DIG_IN_DEBOUNCE_DELAY       50
 

@@ -43,6 +43,7 @@ namespace SerialCom {
     inline void parseState(particleSensorState_t &state) {
         const uint16_t pm25 = (serialRxBuf[5] << 8) | serialRxBuf[6];
         Serial.printf("Received PM 2.5 reading: %u\n", pm25);
+        state.lastFrameMs = millis();
 
         state.measurements[state.measurementIdx] = pm25;
         state.measurementIdx = (state.measurementIdx + 1) % AVG_WINDOW;

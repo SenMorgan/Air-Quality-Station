@@ -4,6 +4,7 @@
 #include <PubSubClient.h>
 #include "bsec.h"
 #include "def.h"
+#include "ha_discovery.h"
 #include "ikea_vkg.h"
 
 /* Configure the BSEC library with information about the sensor
@@ -55,6 +56,13 @@ String output;
 // Debounced states of the digital inputs (pulled up, so idle state is HIGH)
 uint8_t dig_input_1_state = HIGH, dig_input_2_state = HIGH;
 
+// Set when Home Assistant comes online, discovery is (re)published from loop()
+// because publishing inside the MQTT callback would overwrite its buffer
+bool discoveryPending = false;
+// Publish all states on the next sample instead of waiting for the interval,
+// so freshly discovered entities get values right away
+bool forceDataPublish = true;
+
 // Helper functions declarations
 void checkIaqSensorStatus(void);
 void errLeds(void);
@@ -63,6 +71,8 @@ void updateBsecState(void);
 void read_publish_inputs(void);
 uint8_t reconnect(void);
 void publish_data(void);
+bool publish_discovery(void);
+void mqtt_callback(char *topic, uint8_t *payload, unsigned int length);
 
 void setup(void)
 {
@@ -125,6 +135,7 @@ void setup(void)
     // MQTT initializing
     // Connection itself is established in loop() once WiFi is up
     mqttClient.setServer(MQTT_SERVER, MQTT_SERVER_PORT);
+    mqttClient.setCallback(mqtt_callback);
 
     // Print the header
     output = "Timestamp [ms], raw temperature [°C], pressure [hPa], raw relative humidity [%], gas [Ohm], IAQ, IAQ accuracy, temperature [°C], relative humidity [%], Static IAQ, CO2 equivalent, breath VOC equivalent";
@@ -138,6 +149,14 @@ void loop(void)
     SerialCom::handleUart(state);
 
     uint8_t connectedToServer = mqttClient.loop();
+
+    // Home Assistant restarted: announce the device again
+    if (connectedToServer && discoveryPending)
+    {
+        discoveryPending = false;
+        publish_discovery();
+        connectedToServer = mqttClient.connected();
+    }
 
     if (iaqSensor.run())
     { // If new data is available
@@ -352,10 +371,81 @@ uint8_t reconnect(void)
         Serial.println("Successfully connected to " MQTT_SERVER);
         // Retained, so it overrides the retained "offline" last will message
         mqttClient.publish(MQTT_AVAILABILITY_TOPIC, MQTT_AVAILABILITY_MESSAGE, true);
+        // Republish discovery when Home Assistant sends its "online" birth message
+        if (!mqttClient.subscribe(HA_STATUS_TOPIC))
+            Serial.println("Failed to subscribe to " HA_STATUS_TOPIC);
+        if (!publish_discovery())
+            return 0;
         return 1;
     }
     Serial.println("Can't connect to MQTT server...");
     return 0;
+}
+
+/**
+ * @brief Handle incoming MQTT messages (only Home Assistant status for now)
+ */
+void mqtt_callback(char *topic, uint8_t *payload, unsigned int length)
+{
+    static const char online[] = "online";
+    if (strcmp(topic, HA_STATUS_TOPIC) == 0 &&
+        length == sizeof(online) - 1 && memcmp(payload, online, length) == 0)
+    {
+        Serial.println("Home Assistant is online, discovery will be republished");
+        discoveryPending = true;
+    }
+}
+
+/**
+ * @brief Publish the retained Home Assistant discovery config.
+ * The payload lives in flash and is streamed in small chunks, so no large
+ * MQTT buffer is needed. If streaming fails midway the TCP connection is
+ * closed: the broker drops the incomplete packet instead of storing a
+ * partial (or empty) retained config, and discovery is retried on reconnect.
+ *
+ * @return true if the whole payload was sent
+ */
+bool publish_discovery(void)
+{
+    const size_t length = sizeof(HA_DISCOVERY_PAYLOAD) - 1; // without the trailing '\0'
+    size_t sent = 0;
+
+    if (mqttClient.beginPublish(HA_DISCOVERY_TOPIC, length, true))
+    {
+        uint8_t chunk[256];
+        while (sent < length)
+        {
+            const size_t n = std::min(sizeof(chunk), length - sent);
+            memcpy_P(chunk, HA_DISCOVERY_PAYLOAD + sent, n);
+            const size_t written = mqttClient.write(chunk, n);
+            sent += written;
+            if (written != n)
+                break;
+        }
+    }
+
+    if (sent != length || !mqttClient.endPublish())
+    {
+        Serial.printf("Failed to publish discovery: %u of %u bytes sent\n", sent, length);
+        espClient.stop();
+        return false;
+    }
+
+    Serial.printf("Discovery published (%u bytes)\n", length);
+    forceDataPublish = true;
+    return true;
+}
+
+/**
+ * @brief Publish a float value, skipping NaN/Inf (failed or not ready readings)
+ */
+static void publish_float(const char *topic, float value, const char *format = "%0.2f")
+{
+    if (isnan(value) || isinf(value))
+        return;
+    char buff[20];
+    snprintf(buff, sizeof(buff), format, value);
+    mqttClient.publish(topic, buff);
 }
 
 /**
@@ -364,31 +454,37 @@ uint8_t reconnect(void)
 void publish_data(void)
 {
     static uint32_t lastPublishedTimeStamp;
-    static bool firstPublish = true;
     static char buff[20];
 
-    if (firstPublish || millis() - lastPublishedTimeStamp >= MQTT_PUBLISH_INTERVAL)
+    if (forceDataPublish || millis() - lastPublishedTimeStamp >= MQTT_PUBLISH_INTERVAL)
     {
-        firstPublish = false;
+        forceDataPublish = false;
         mqttClient.publish(MQTT_AVAILABILITY_TOPIC, MQTT_AVAILABILITY_MESSAGE, true);
-        snprintf(buff, sizeof(buff), "%lu sec", millis() / 1000UL);
+        // Plain integer seconds, HA "duration" sensor
+        snprintf(buff, sizeof(buff), "%lu", millis() / 1000UL);
         mqttClient.publish(MQTT_UPTIME_TOPIC, buff);
-        sprintf(buff, "%0.2f", iaqSensor.temperature);
-        mqttClient.publish(DEFAULT_TOPIC "temperature", buff);
-        sprintf(buff, "%0.2f", iaqSensor.humidity);
-        mqttClient.publish(DEFAULT_TOPIC "humidity", buff);
-        sprintf(buff, "%0.2f", iaqSensor.pressure / 100.0F);
-        mqttClient.publish(DEFAULT_TOPIC "pressure", buff);
-        sprintf(buff, "%0.2f", iaqSensor.staticIaq);
-        mqttClient.publish(DEFAULT_TOPIC "iaq", buff);
-        sprintf(buff, "%d", iaqSensor.staticIaqAccuracy);
+        snprintf(buff, sizeof(buff), "%d", (int)WiFi.RSSI());
+        mqttClient.publish(MQTT_RSSI_TOPIC, buff);
+
+        // Called only after iaqSensor.run() returned new data, so these are fresh
+        publish_float(DEFAULT_TOPIC "temperature", iaqSensor.temperature);
+        publish_float(DEFAULT_TOPIC "humidity", iaqSensor.humidity);
+        if (iaqSensor.pressure > 0)
+            publish_float(DEFAULT_TOPIC "pressure", iaqSensor.pressure / 100.0F);
+
+        snprintf(buff, sizeof(buff), "%u", (unsigned)iaqSensor.staticIaqAccuracy);
         mqttClient.publish(DEFAULT_TOPIC "iaqAccuracy", buff);
-        sprintf(buff, "%0.2f", iaqSensor.co2Equivalent);
-        mqttClient.publish(DEFAULT_TOPIC "co2Equivalent", buff);
-        sprintf(buff, "%0.2f", iaqSensor.breathVocEquivalent);
-        mqttClient.publish(DEFAULT_TOPIC "breathVocEquivalent", buff);
-        // Do not publish a fake 0 before the first full PM2.5 averaging window
-        if (state.valid)
+        // With accuracy 0 BSEC is still stabilizing (or had a timing violation) and
+        // reports default values (IAQ 25/50, CO2 500 ppm...), which are not real readings
+        if (iaqSensor.staticIaqAccuracy > 0)
+        {
+            publish_float(DEFAULT_TOPIC "iaq", iaqSensor.staticIaq);
+            publish_float(DEFAULT_TOPIC "co2Equivalent", iaqSensor.co2Equivalent);
+            publish_float(DEFAULT_TOPIC "breathVocEquivalent", iaqSensor.breathVocEquivalent);
+        }
+
+        // Skip PM2.5 before the first full averaging window and if the sensor went silent
+        if (state.valid && millis() - state.lastFrameMs < PM25_STALE_TIMEOUT)
         {
             snprintf(buff, sizeof(buff), "%u", state.avgPM25);
             mqttClient.publish(DEFAULT_TOPIC "pm25", buff);

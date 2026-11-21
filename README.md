@@ -60,60 +60,29 @@ there was a timing violation (i.e. BSEC was called too early or too late), which
 **IAQ Accuracy=2** means BSEC found a new calibration data and is currently calibrating,<br>
 **IAQ Accuracy=3** means BSEC calibrated successfully.
 
-## Home Assistant YAML configuration
-```yaml
-mqtt:
-  sensor:
-    - name: "Air Quality Station Temperature"
-      state_topic: "/air-quality-station/temperature"
-      availability_topic: "/air-quality-station/availability"
-      device_class: temperature
-      unit_of_measurement: "°C"
-    - name: "Air Quality Station Humidity"
-      state_topic: "/air-quality-station/humidity"
-      availability_topic: "/air-quality-station/availability"
-      device_class: humidity
-      unit_of_measurement: "%"
-    - name: "Air Quality Station Pressure"
-      state_topic: "/air-quality-station/pressure"
-      availability_topic: "/air-quality-station/availability"
-      device_class: pressure
-      unit_of_measurement: "hPa"
-    - name: "Air Quality Station IAQ"
-      state_topic: "/air-quality-station/iaq"
-      availability_topic: "/air-quality-station/availability"
-      device_class: aqi
-    - name: "Air Quality Station IAQ Accuracy"
-      state_topic: "/air-quality-station/iaqAccuracy"
-      availability_topic: "/air-quality-station/availability"
-    # CO2 equivalent estimate [ppm]
-    - name: "Air Quality Station CO2"
-      state_topic: "/air-quality-station/co2Equivalent"
-      availability_topic: "/air-quality-station/availability"
-      device_class: carbon_dioxide
-      unit_of_measurement: "ppm"
-    # Breath VOC concentration estimate [ppm]
-    - name: "Air Quality Station VOC"
-      state_topic: "/air-quality-station/breathVocEquivalent"
-      availability_topic: "/air-quality-station/availability"
-      unit_of_measurement: "ppm"
-    - name: "Air Quality Station PM2.5"
-      state_topic: "/air-quality-station/pm25"
-      availability_topic: "/air-quality-station/availability"
-      device_class: pm25
-      unit_of_measurement: "µg/m³"
-  binary_sensor:
-    - name: "Air Quality Station Input 1"
-      state_topic: "/air-quality-station/dig_input_1"
-      availability_topic: "/air-quality-station/availability"
-      payload_on: "0"   # input is pulled up, active when shorted to GND
-      payload_off: "1"
-    - name: "Air Quality Station Input 2"
-      state_topic: "/air-quality-station/dig_input_2"
-      availability_topic: "/air-quality-station/availability"
-      payload_on: "0"
-      payload_off: "1"
-```
+## Home Assistant
+The station announces itself via [MQTT discovery](https://www.home-assistant.io/integrations/mqtt/#mqtt-discovery), no YAML is needed.
+A single retained device-based discovery message is published to `homeassistant/device/air_quality_station/config`
+after every connection to the broker and whenever Home Assistant sends `online` to `homeassistant/status`.
+The payload is defined in `lib/ha_discovery/ha_discovery.h`.
+
+| Entity | State topic | Unit |
+|---|---|---|
+| Temperature | `/air-quality-station/temperature` | °C |
+| Humidity | `/air-quality-station/humidity` | % |
+| Pressure | `/air-quality-station/pressure` | hPa |
+| IAQ (static IAQ) | `/air-quality-station/iaq` | IAQ |
+| IAQ Accuracy | `/air-quality-station/iaqAccuracy` | 0..3 |
+| CO2 equivalent | `/air-quality-station/co2Equivalent` | ppm |
+| Breath VOC equivalent | `/air-quality-station/breathVocEquivalent` | ppm |
+| PM2.5 | `/air-quality-station/pm25` | µg/m³ |
+| Digital Input 1, 2 | `/air-quality-station/dig_input_1`, `dig_input_2` | `1` / `0` |
+| Uptime | `/air-quality-station/uptime` | s |
+| Wi-Fi Signal | `/air-quality-station/rssi` | dBm |
+
+Availability: `/air-quality-station/availability` (`online` / `offline`, retained, `offline` is the MQTT Last Will).
+Values that are not available (PM2.5 before the first valid frame or when the sensor is silent, IAQ/CO2/VOC
+while BSEC accuracy is 0) are not published at all, instead of sending a placeholder.
 
 ## Dependencies
 All dependencies will be automatically installed by PlatformIO:
