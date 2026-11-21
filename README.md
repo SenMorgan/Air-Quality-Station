@@ -1,6 +1,6 @@
 # Air Quality Station
 
-Smart Air Quality Station based on NodeMCU v1.0 (ESP8266) and Bosch BME680 using BSEC Arduino Library to get IAQ (Indoor Air Quality) and other environmental data.
+Smart Air Quality Station based on Wemos D1 mini (ESP8266), Bosch BME680 (using BSEC Arduino Library to get IAQ (Indoor Air Quality) and other environmental data) and the PM2.5 sensor from IKEA VINDRIKTNING. Two digital inputs are also exposed.
 WiFi and MQTT is used to send data to the Home Assistant.<br>
 The project was created in PlatformIO 04.06.2022
 
@@ -17,6 +17,22 @@ The project was created in PlatformIO 04.06.2022
 3. Set your own values in `platformio_override.ini`.
 4. Update hardware and other settings in `lib/defs/def.h` file if needed.
 5. Build and upload the project to your ESP device using PlatformIO.
+
+> `platformio_override.ini` contains your credentials and is ignored by git - never commit it.
+
+### Notes
+- BSEC calibration state is saved to EEPROM (flash) when IAQ accuracy reaches 3 and then every 6 hours (`BSEC_STATE_SAVE_PERIOD`), so the calibration survives reboots.
+- On ESP8266 the precompiled BSEC library does not fit into IRAM, so `scripts/bsec_irom.py` moves it to flash during the build.
+- On a sensor error the status LED blinks for 10 seconds and the device restarts.
+
+## Wiring (Wemos D1 mini)
+| Signal                       | GPIO | Pin |
+|------------------------------|------|-----|
+| BME680 SDA                   | 12   | D6  |
+| BME680 SCL                   | 14   | D5  |
+| IKEA VINDRIKTNING TX (REST)  | 13   | D7  |
+| Digital input 1 (pull-up)    | 5    | D1  |
+| Digital input 2 (pull-up)    | 4    | D2  |
 
 ## BME680 Sensor
 The BME680 is a low-power gas, pressure, humidity and temperature sensor. The sensor is based on a metal oxide (MOX) gas sensor and an integrated heater. The heater is used to heat up the MOX gas sensor and to desorb VOCs from the sensor surface.
@@ -47,52 +63,63 @@ there was a timing violation (i.e. BSEC was called too early or too late), which
 
 ## Home Assistant YAML configuration
 ```yaml
-sensor:
-  - name: "Air Quality Station Temperature"
-    state_topic: "/air-quality-station/temperature"
-    icon: mdi:temperature-celsius
-    device_class: temperature
-    value_template: "{{ value }}"
-    unit_of_measurement: "°C"
-  - name: "Air Quality Station Humidity"
-    state_topic: "/air-quality-station/humidity"
-    device_class: humidity
-    value_template: "{{ value }}"
-    unit_of_measurement: "%"
-  - name: "Air Quality Station Pressure"
-    state_topic: "/air-quality-station/pressure"
-    device_class: pressure
-    value_template: "{{ value }}"
-    unit_of_measurement: "hPa"
-    # IAQ
-  - name: "Air Quality Station IAQ"
-    state_topic: "/air-quality-station/iaq"
-    device_class: aqi
-    value_template: "{{ value }}"
-    unit_of_measurement: "IAQ"
-    # IAQ accuracy
-  - name: "Air Quality Station IAQ Accuracy"
-    state_topic: "/air-quality-station/iaqAccuracy"
-    value_template: "{{ value }}"
-    unit_of_measurement: "IAQ Acc"
+mqtt:
+  sensor:
+    - name: "Air Quality Station Temperature"
+      state_topic: "/air-quality-station/temperature"
+      availability_topic: "/air-quality-station/availability"
+      device_class: temperature
+      unit_of_measurement: "°C"
+    - name: "Air Quality Station Humidity"
+      state_topic: "/air-quality-station/humidity"
+      availability_topic: "/air-quality-station/availability"
+      device_class: humidity
+      unit_of_measurement: "%"
+    - name: "Air Quality Station Pressure"
+      state_topic: "/air-quality-station/pressure"
+      availability_topic: "/air-quality-station/availability"
+      device_class: pressure
+      unit_of_measurement: "hPa"
+    - name: "Air Quality Station IAQ"
+      state_topic: "/air-quality-station/iaq"
+      availability_topic: "/air-quality-station/availability"
+      device_class: aqi
+    - name: "Air Quality Station IAQ Accuracy"
+      state_topic: "/air-quality-station/iaqAccuracy"
+      availability_topic: "/air-quality-station/availability"
     # CO2 equivalent estimate [ppm]
-  - name: "Air Quality Station CO2"
-    state_topic: "/air-quality-station/co2Equivalent"
-    device_class: carbon_dioxide
-    value_template: "{{ value }}"
-    unit_of_measurement: "ppm"
+    - name: "Air Quality Station CO2"
+      state_topic: "/air-quality-station/co2Equivalent"
+      availability_topic: "/air-quality-station/availability"
+      device_class: carbon_dioxide
+      unit_of_measurement: "ppm"
     # Breath VOC concentration estimate [ppm]
-  - name: "Air Quality Station VOC"
-    state_topic: "/air-quality-station/breathVocEquivalent"
-    device_class: volatile_organic_compounds
-    value_template: "{{ value }}"
-    unit_of_measurement: "ppm"
+    - name: "Air Quality Station VOC"
+      state_topic: "/air-quality-station/breathVocEquivalent"
+      availability_topic: "/air-quality-station/availability"
+      unit_of_measurement: "ppm"
+    - name: "Air Quality Station PM2.5"
+      state_topic: "/air-quality-station/pm25"
+      availability_topic: "/air-quality-station/availability"
+      device_class: pm25
+      unit_of_measurement: "µg/m³"
+  binary_sensor:
+    - name: "Air Quality Station Input 1"
+      state_topic: "/air-quality-station/dig_input_1"
+      availability_topic: "/air-quality-station/availability"
+      payload_on: "0"   # input is pulled up, active when shorted to GND
+      payload_off: "1"
+    - name: "Air Quality Station Input 2"
+      state_topic: "/air-quality-station/dig_input_2"
+      availability_topic: "/air-quality-station/availability"
+      payload_on: "0"
+      payload_off: "1"
 ```
 
 ## Dependencies
 All dependencies will be automatically installed by PlatformIO:
-- BSEC Software Library@1.6.1480
-- PubSubClient@2.8.0
+- BSEC Software Library@^1.8.1492
+- PubSubClient@^2.8
 
 ## Copyright
 Copyright (c) 2022 Sen Morgan. Licensed under the MIT license, see LICENSE.md

@@ -1,4 +1,4 @@
-[env:nodemcuv2-OTA]
+[env:d1_mini-OTA]
 upload_flags =
     --port=***
     --auth=***
